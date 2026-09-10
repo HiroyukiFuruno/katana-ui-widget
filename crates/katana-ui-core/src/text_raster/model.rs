@@ -59,6 +59,15 @@ pub struct PlatformTextMetrics {
     pub grapheme_advances: Vec<PlatformTextGraphemeAdvance>,
 }
 
+/// Vertical metrics for a raster request in the raster's own coordinate system.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PlatformTextLineMetrics {
+    /// Offset from the raster origin to the baseline, in logical pixels.
+    pub baseline_from_raster_origin_px: f32,
+    /// Total line-box height requested from the rasterizer, in logical pixels.
+    pub line_box_height_px: f32,
+}
+
 /// Measurements collected during one adapter frame.
 ///
 /// The record is intentionally keyed only by the generic text request.  It is

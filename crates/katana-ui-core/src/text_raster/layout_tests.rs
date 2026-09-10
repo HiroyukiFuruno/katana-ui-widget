@@ -62,3 +62,33 @@ fn direct_layout_measure_rejects_nonfinite_scale_factor_before_shaping() {
         Err(PlatformTextRasterError::NonFiniteLayoutExtent)
     );
 }
+
+#[test]
+fn direct_line_metrics_rejects_empty_and_nonfinite_requests_before_shaping() {
+    let mut font_system = cosmic_text::FontSystem::new();
+    let empty = PlatformTextRasterRequest::from_text("", font(), [255; RGBA_CHANNEL_COUNT]);
+
+    assert_eq!(
+        TextLayoutRasterizer::line_metrics(
+            &mut font_system,
+            &empty,
+            &unavailable_emoji_face(),
+            &ResolvedTextFaces::default(),
+        ),
+        Err(PlatformTextRasterError::EmptyText)
+    );
+
+    let mut nonfinite =
+        PlatformTextRasterRequest::from_text("coverage", font(), [255; RGBA_CHANNEL_COUNT]);
+    nonfinite.font.size = f32::NAN;
+
+    assert_eq!(
+        TextLayoutRasterizer::line_metrics(
+            &mut font_system,
+            &nonfinite,
+            &unavailable_emoji_face(),
+            &ResolvedTextFaces::default(),
+        ),
+        Err(PlatformTextRasterError::NonFiniteLayoutExtent)
+    );
+}

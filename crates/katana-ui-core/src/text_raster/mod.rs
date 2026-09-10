@@ -19,9 +19,10 @@ pub use catalog_types::{
 pub use config::{PlatformTextFaceSelection, PlatformTextRasterConfig};
 pub use model::{
     PlatformTextGraphemeAdvance, PlatformTextGraphemeBounds, PlatformTextGraphemeRange,
-    PlatformTextHit, PlatformTextMetrics, PlatformTextMetricsFrame, PlatformTextMetricsRequest,
-    PlatformTextRaster, PlatformTextRasterCrop, PlatformTextRasterError, PlatformTextRasterReport,
-    PlatformTextRasterRequest, PlatformTextRasterStats,
+    PlatformTextHit, PlatformTextLineMetrics, PlatformTextMetrics, PlatformTextMetricsFrame,
+    PlatformTextMetricsRequest, PlatformTextRaster, PlatformTextRasterCrop,
+    PlatformTextRasterError, PlatformTextRasterReport, PlatformTextRasterRequest,
+    PlatformTextRasterStats,
 };
 pub use rasterizer::PlatformTextRasterizer;
 pub use resources::PlatformTextRasterResources;

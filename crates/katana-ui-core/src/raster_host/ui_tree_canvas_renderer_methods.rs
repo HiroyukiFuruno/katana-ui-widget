@@ -5,6 +5,7 @@ use super::{
     dimension_px, draw_hover_surface, draw_label, gap_after_child, has_absolute_child, is_absolute,
     is_outside_vertical_viewport, remaining_width, should_draw_container_label, stack_frame_height,
 };
+use crate::raster_host::text::RichTextStyle;
 use crate::raster_host::ui_tree_canvas_scroll_measure::measured_node_height;
 
 impl UiTreeCanvasRenderer {
@@ -177,14 +178,26 @@ impl UiTreeCanvasRenderer {
         } else {
             format!("> {}", node.props().label)
         };
-        self.text.draw(
-            canvas,
-            &label,
-            x,
-            y.saturating_add(metrics.top_margin),
-            metrics.font_size,
-            palette.text,
-        );
+        if let Some(baseline_from_line_box_top) = metrics.baseline_from_line_box_top {
+            self.text.draw_signed_styled_in_line_box(
+                canvas,
+                &label,
+                x as isize,
+                (y.saturating_add(metrics.top_margin)) as f32,
+                metrics.line_box_height,
+                baseline_from_line_box_top,
+                RichTextStyle::new(metrics.font_size, palette.text),
+            );
+        } else {
+            self.text.draw(
+                canvas,
+                &label,
+                x,
+                y.saturating_add(metrics.top_margin),
+                metrics.font_size,
+                palette.text,
+            );
+        }
         *y = y.saturating_add(metrics.line_height);
         if node.props().interaction.open {
             let child_x = if document_accordion {
@@ -225,6 +238,7 @@ fn hover_surface_child_clip_height(node: &UiNode, requested_height: usize) -> us
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::raster_host::{UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography};
     use katana_ui_core::render_model::{UiDimension, UiInteractionState, UiPosition, UiTextProps};
     use katana_ui_core::theme::ThemeSnapshot;
 
@@ -394,6 +408,67 @@ mod tests {
                 .iter()
                 .any(|pixel| *pixel != palette.background)
         );
+    }
+
+    #[test]
+    fn accordion_renderer_covers_document_label_baseline_override() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 240,
+            height: 160,
+            scroll_y: 0.0,
+        };
+        let low_baseline = UiTreeDocumentTypography::new()
+            .with_body_baseline(UiTreeTextRoleBaselineTypography::new(24.0, 40.0, 8.0));
+        let high_baseline = UiTreeDocumentTypography::new()
+            .with_body_baseline(UiTreeTextRoleBaselineTypography::new(24.0, 40.0, 18.0));
+        let low_renderer =
+            UiTreeCanvasRenderer::with_document_typography(theme.clone(), low_baseline);
+        let high_renderer =
+            UiTreeCanvasRenderer::with_document_typography(theme.clone(), high_baseline);
+
+        for role in ["html-accordion", "html-accordion-preview"] {
+            let accordion = UiNode::new(UiNodeKind::Accordion, "Document").text(UiTextProps {
+                role: role.to_string(),
+                ..UiTextProps::default()
+            });
+            let mut low_canvas = Canvas::new(240, 80, palette.background);
+            let mut low_y = 0;
+            low_renderer.draw_accordion(&mut low_canvas, &accordion, 0, &mut low_y, area, palette);
+            assert!(low_canvas.non_background_pixels(palette.background) > 0);
+            let baseline_low_top = first_non_background_row(&low_canvas, palette.background);
+
+            let mut high_canvas = Canvas::new(240, 80, palette.background);
+            let mut high_y = 0;
+            high_renderer.draw_accordion(
+                &mut high_canvas,
+                &accordion,
+                0,
+                &mut high_y,
+                area,
+                palette,
+            );
+            assert!(high_canvas.non_background_pixels(palette.background) > 0);
+            let baseline_high_top = first_non_background_row(&high_canvas, palette.background);
+
+            assert_ne!(
+                baseline_high_top, baseline_low_top,
+                "public baseline override should move {role} label rendering position",
+            );
+            assert!(baseline_high_top > baseline_low_top);
+        }
+    }
+
+    fn first_non_background_row(canvas: &Canvas, background: u32) -> usize {
+        canvas
+            .pixels()
+            .iter()
+            .position(|pixel| *pixel != background)
+            .map(|index| index / canvas.width())
+            .unwrap_or(0)
     }
 
     #[test]

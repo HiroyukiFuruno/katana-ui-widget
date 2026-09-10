@@ -31,7 +31,19 @@
 - [x] 5.1 直接・推移依存と `Cargo.lock` を監査し、不要な downgrade や path / git release dependency を残さない。
 - [x] 5.2 v0.3.8 の version、release note、OpenSpec task evidence を更新する。
 - [x] 5.3 統合 HEAD で format、AST lint、type check、lint、workspace test、consumer contract、raster host contract、Storybook regression、strict coverage、`just VERSION=v0.3.8 release-check`、`git diff --check` を実行する。
-- [ ] 5.4 Draft PRを作成し、review、指摘対応・reply/resolve、P0/P1=0、Ready化、required 3 OS CI を完了する。
-- [ ] 5.5 merge後に tag、GitHub Release、crates.io `katana-ui-core@0.3.8` を個別に確認する。
-- [ ] 5.6 KDV Issue #48 の既存 consumer で exact registry v0.3.8 を採用し、boundary check、per-side border、canonical crop 95/95 を確認する。KLE consumerで #40 の3 OS artifact evidence を確認する。
-- [ ] 5.7 #35、#37、#40、#43、#44 の Issue に公開・consumer evidence を記録して close し、`branch-hygiene` に従って不要な release branch / worktree を整理する。
+- [x] 5.4 Draft PR #46 を作成し、review、指摘対応・reply/resolve、P0/P1=0、Ready化、required 3 OS CI を完了して merge する。
+- [x] 5.5 merge後に tag、GitHub Release、crates.io `katana-ui-core@0.3.8` を個別に確認する。
+- [/] 5.6 KDV Issue #48 の既存 consumer で exact registry v0.3.8 を採用し、boundary check、per-side border、canonical crop 95/95 を確認する。KLE consumerで #40 の3 OS artifact evidence を確認する。KDV は 91/95 を再現し、KLE は opaque lease から full plan を構築できない公開 API 境界を報告したため、受入は未完了とする。
+- [/] 5.7 #43、#44 は公開 evidence を記録して close した。#35、#37、#40 は downstream evidence 完了後に close し、`branch-hygiene` に従って不要な release branch / worktree を整理する。
+
+## 6. v0.3.9 corrective consumer-boundary release（KUC #40）
+
+- [x] 6.1 KUC-issued opaque host projection lease を consumer artifact stage binding へ直接移送する public API を追加し、presentation token、host router、renderer、`RawInput` を consumer に公開しない。
+- [x] 6.2 foreign-consumer contract で KUC-owned `ConsumerArtifact` scenario の全 10 stage を opaque lease から発行・実行する regression を追加し、leaf ID と host action target を分離して、format、AST lint、workspace check、`just check`、`git diff --check` を通す。
+- [x] 6.3 v0.3.9 の release note と OpenSpec evidence を更新する。
+- [/] 6.4 Draft PR #47 を作成し、review、指摘対応・reply/resolve、P0/P1=0、Ready化、required 3 OS CI を完了して merge する。
+- [ ] 6.5 merge後に tag、GitHub Release、crates.io `katana-ui-core@0.3.9` を個別に確認する。
+- [ ] 6.6 KLE consumer が exact registry v0.3.9 で opaque lease bridge を使う macOS/Linux/Windows artifact evidence を確認し、#40 を close する。
+- [ ] 6.7 KDV consumer が exact registry v0.3.9 と public document role typography で boundary、per-side border、canonical crop 95/95 を確認し、#35 と #37 を close する。
+- [ ] 6.8 OpenSpec archive と `branch-hygiene` を完了する。
+- [x] 6.9 KatanA 実ホストで測定した target line box / glyph baseline を、ラスタ描画原点と混同しない generic KUC coordinate contract として実装し、fractional line-height、draw、wrap、clip、hit を同一モデルで回帰する。

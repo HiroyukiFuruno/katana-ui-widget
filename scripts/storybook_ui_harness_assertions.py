@@ -193,8 +193,10 @@ class StorybookUiHarness:
                 "encoder_capability_verified",
                 "muxer_capability_verified",
             ),
-            "crates/katana-ui-core/src/egui/text_command_surface/host_root.rs": (
+            "crates/katana-ui-core/src/egui/text_command_surface/host_root/factory_api.rs": (
                 "pub fn retain(",
+            ),
+            "crates/katana-ui-core/src/egui/text_command_surface/host_root/token_api.rs": (
                 "pub fn token(",
             ),
             "crates/katana-ui-core/src/egui/text_command_surface/host_root/types.rs": (

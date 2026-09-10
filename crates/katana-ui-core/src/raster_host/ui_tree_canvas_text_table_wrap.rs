@@ -86,7 +86,9 @@ mod tests {
         let metrics = UiTreeTextMetrics {
             font_size: 12.0,
             line_height: 19,
+            line_box_height: 19.0,
             top_margin: 0,
+            baseline_from_line_box_top: None,
             background_height: 19,
             highlight_height: 19,
             underline_offset: 14,
@@ -104,7 +106,9 @@ mod tests {
         let metrics = UiTreeTextMetrics {
             font_size: 12.0,
             line_height: 19,
+            line_box_height: 19.0,
             top_margin: 0,
+            baseline_from_line_box_top: None,
             background_height: 19,
             highlight_height: 19,
             underline_offset: 14,

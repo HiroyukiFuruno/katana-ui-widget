@@ -1,6 +1,7 @@
 use super::{
     FullTextCommandSurfaceScenario, FullTextCommandSurfaceScenarioError,
-    FullTextCommandSurfaceScenarioId, NoopRouter, issue_lease, presentation, stages,
+    FullTextCommandSurfaceScenarioId, NoopRouter, consumer_artifact_presentation, issue_lease,
+    consumer_artifact_stages, presentation, stages,
 };
 
 /// Issues generic full-surface scenarios without exposing fixture geometry or semantics.
@@ -18,6 +19,19 @@ impl FullTextCommandSurfaceScenarioFactory {
         id: FullTextCommandSurfaceScenarioId,
     ) -> Result<FullTextCommandSurfaceScenario, FullTextCommandSurfaceScenarioError> {
         self.issue_with_router(id, NoopRouter)
+    }
+
+    /// Creates the additive consumer-artifact scenario without extending the
+    /// stable, exhaustively-matchable scenario ID enum.
+    pub fn issue_consumer_artifact(
+        &self,
+    ) -> Result<FullTextCommandSurfaceScenario, FullTextCommandSurfaceScenarioError> {
+        let lease = issue_lease(FullTextCommandSurfaceScenarioId::Resting, consumer_artifact_presentation(), NoopRouter)?;
+        Ok(FullTextCommandSurfaceScenario {
+            id: FullTextCommandSurfaceScenarioId::Resting,
+            lease: Some(lease),
+            stages: consumer_artifact_stages(),
+        })
     }
 
     /// Creates a deterministic scenario and retains a caller-owned generic router opaquely.
@@ -69,5 +83,17 @@ mod tests {
             assert_eq!(scenario.id(), id);
             assert!(!scenario.stages().is_empty());
         }
+    }
+
+    #[test]
+    fn factory_issues_the_additive_consumer_artifact_scenario() {
+        let factory = FullTextCommandSurfaceScenarioFactory::new();
+        let scenario = factory
+            .issue_consumer_artifact()
+            .expect("consumer artifact scenario remains issuable");
+
+        assert_eq!(scenario.id(), FullTextCommandSurfaceScenarioId::Resting);
+        assert_eq!(scenario.stages().len(), 10);
+        assert!(scenario.stages().iter().any(|stage| stage.event_count() > 0));
     }
 }

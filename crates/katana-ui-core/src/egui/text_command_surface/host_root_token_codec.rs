@@ -1,10 +1,10 @@
 use super::super::types::{EguiTextCommandSurfacePresentation, TextCommandSurfaceStyle};
 use super::EguiTextCommandSurfaceHostTargetToken;
+use super::host_root_types::{RootPresentationWire, RootPresentationWireWithCommandFamilies};
 use super::{
     EguiTextCommandSurfaceCommandFamilyProjection, EguiTextCommandSurfacePresentationToken,
     EguiTextCommandSurfaceRootFactoryError,
 };
-use super::{RootPresentationWire, RootPresentationWireWithCommandFamilies};
 use sha2::{Digest, Sha256};
 
 pub(super) struct DecodedRootPresentation {

@@ -2,8 +2,9 @@ use crate::text_raster::catalog::PlatformFontCatalog;
 use crate::text_raster::config::{PlatformTextFaceSelection, PlatformTextRasterConfig};
 use crate::text_raster::layout::{ResolvedTextFaces, TextLayoutRasterizer};
 use crate::text_raster::model::{
-    PlatformTextMetrics, PlatformTextMetricsRequest, PlatformTextRaster, PlatformTextRasterError,
-    PlatformTextRasterReport, PlatformTextRasterRequest, PlatformTextRasterStats,
+    PlatformTextLineMetrics, PlatformTextMetrics, PlatformTextMetricsRequest, PlatformTextRaster,
+    PlatformTextRasterError, PlatformTextRasterReport, PlatformTextRasterRequest,
+    PlatformTextRasterStats,
 };
 use cosmic_text::SwashCache;
 use std::collections::{HashMap, VecDeque};
@@ -139,6 +140,23 @@ impl PlatformTextRasterizer {
         self.catalog
             .with_font_system_for_face_selection(self.face_selection, |font_system| {
                 TextLayoutRasterizer::measure(font_system, request, &emoji_face, &self.text_faces)
+            })
+            .map_err(|_| PlatformTextRasterError::CatalogAccess)?
+    }
+
+    pub fn measure_line_metrics(
+        &mut self,
+        request: &PlatformTextRasterRequest,
+    ) -> Result<PlatformTextLineMetrics, PlatformTextRasterError> {
+        let emoji_face = self.catalog.emoji_face().clone();
+        self.catalog
+            .with_font_system_for_face_selection(self.face_selection, |font_system| {
+                TextLayoutRasterizer::line_metrics(
+                    font_system,
+                    request,
+                    &emoji_face,
+                    &self.text_faces,
+                )
             })
             .map_err(|_| PlatformTextRasterError::CatalogAccess)?
     }

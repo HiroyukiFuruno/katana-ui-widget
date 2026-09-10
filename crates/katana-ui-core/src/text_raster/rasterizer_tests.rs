@@ -22,6 +22,9 @@ const SOURCE_IDENTITY_TEXT: &str = "Candidate source";
 
 static NEXT_TEST_PATH: AtomicU64 = AtomicU64::new(0);
 
+#[path = "rasterizer_tests_line_metrics.rs"]
+mod line_metrics;
+
 fn installed_font_candidate() -> io::Result<(PathBuf, String)> {
     let mut candidate_paths = HashSet::new();
     let (path, family) = FontSystem::new()

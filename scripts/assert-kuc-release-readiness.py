@@ -742,6 +742,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         'bash scripts/coverage/run-container.sh "{{COVERAGE_IMAGE}}" "{{REPO_ROOT}}" "{{COVERAGE_BUILD_JOBS}}" "{{COVERAGE_TEST_THREADS}}" "{{reuse}}"',
         "check: fmt-check ast-lint check-types lint unit-test",
         "python3 scripts/assert-strict-coverage-json.py --self-test",
+        "python3 scripts/assert-strict-coverage-lcov.py --self-test",
         "python3 scripts/coverage/image-runtime-id.py --self-test",
         "python3 scripts/coverage/run-test-binaries.py --self-test",
         "python3 scripts/test_coverage_ci_storage.py",
@@ -794,6 +795,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         'coverage_profile_path="${coverage_storage_dir}/kuc-workspace-coverage-profile-v3.sha256"',
         'coverage_strict_state_path="${coverage_profile_path}.strict-state"',
         'coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"',
+        'coverage_lcov_path="${coverage_storage_dir}/kuc-workspace-coverage.lcov"',
         "coverage_production_digest()",
         "coverage_profile_signature()",
         "native_coverage_runtime_id()",
@@ -811,6 +813,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "Justfile",
         "scripts/run-strict-coverage.sh",
         "scripts/assert-strict-coverage-json.py",
+        "scripts/assert-strict-coverage-lcov.py",
         "scripts/coverage/run-test-binaries.py",
         "scripts/coverage/image-runtime-id.py",
         "scripts/coverage/run-container.sh",
@@ -851,6 +854,9 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         '--output-path "${coverage_report_path}"',
         "python3 scripts/assert-strict-coverage-json.py",
         "--validate-profile",
+        "--lcov",
+        '--output-path "${coverage_lcov_path}"',
+        'if python3 scripts/assert-strict-coverage-lcov.py "${coverage_lcov_path}"; then',
         "--ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\\.rs$|[^/]+_tests\\.rs$)'",
         "container coverage requires a validated runtime image identity",
         "native coverage does not accept KUC_COVERAGE_IMAGE_ID",
@@ -980,9 +986,10 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
     profile_finalize = coverage_source.rfind(
         'write_coverage_profile_state "${pending_profile_signature}"'
     )
+    lcov_report = coverage_source.rfind('--output-path "${coverage_lcov_path}"')
     transaction_commit = coverage_source.rfind("coverage_transaction_active=0")
     strict_report = coverage_source.rfind(
-        'if python3 scripts/assert-strict-coverage-json.py "${coverage_report_path}"; then'
+        'if python3 scripts/assert-strict-coverage-lcov.py "${coverage_lcov_path}"; then'
     )
     strict_pass = coverage_source.rfind(
         'write_coverage_strict_state "passed:${pending_profile_signature}"'
@@ -1000,6 +1007,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         < min(mutation_positions)
         <= max(mutation_positions)
         < profile_validation
+        < lcov_report
         < profile_finalize
         < transaction_commit
         < strict_report
@@ -1032,6 +1040,28 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
             f"{path_label(coverage_checker, root)}: strict coverage checker must include `{token}`"
             for token in checker_required
             if token not in checker_source
+        )
+    lcov_checker = root / "scripts" / "assert-strict-coverage-lcov.py"
+    if not lcov_checker.exists():
+        failures.append(
+            f"{path_label(lcov_checker, root)}: strict coverage LCOV checker is missing"
+        )
+    else:
+        lcov_checker_source = lcov_checker.read_text(encoding="utf-8")
+        lcov_checker_required = (
+            "def strict_coverage_failures(report: str)",
+            "coverage lines must be 100%",
+            "coverage functions must be 100%",
+            "coverage report has no source files",
+            "if strict_coverage_failures(good):",
+            "if not strict_coverage_failures(bad_line):",
+            "if not strict_coverage_failures(bad_function):",
+            "if not strict_coverage_failures(\"\"):",
+        )
+        failures.extend(
+            f"{path_label(lcov_checker, root)}: strict coverage LCOV checker must include `{token}`"
+            for token in lcov_checker_required
+            if token not in lcov_checker_source
         )
     return failures
 
@@ -1950,6 +1980,7 @@ def write_justfile_test_scope_self_test_file(
         "\n"
         "check: fmt-check ast-lint check-types lint unit-test\n"
         "    python3 scripts/assert-strict-coverage-json.py --self-test\n"
+        "    python3 scripts/assert-strict-coverage-lcov.py --self-test\n"
         "    python3 scripts/coverage/image-runtime-id.py --self-test\n"
         "    python3 scripts/coverage/run-test-binaries.py --self-test\n"
         "    python3 scripts/test_coverage_ci_storage.py\n"
@@ -2047,6 +2078,7 @@ def write_justfile_test_scope_self_test_file(
         'coverage_profile_path="${coverage_storage_dir}/kuc-workspace-coverage-profile-v3.sha256"\n'
         'coverage_strict_state_path="${coverage_profile_path}.strict-state"\n'
         'coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"\n'
+        'coverage_lcov_path="${coverage_storage_dir}/kuc-workspace-coverage.lcov"\n'
         "coverage_production_digest() { :; }\n"
         "coverage_profile_signature() { :; }\n"
         "native_coverage_runtime_id() { :; }\n"
@@ -2065,6 +2097,7 @@ def write_justfile_test_scope_self_test_file(
         "Justfile\n"
         "scripts/run-strict-coverage.sh\n"
         "scripts/assert-strict-coverage-json.py\n"
+        "scripts/assert-strict-coverage-lcov.py\n"
         "scripts/coverage/run-test-binaries.py\n"
         "scripts/coverage/image-runtime-id.py\n"
         "scripts/coverage/run-container.sh\n"
@@ -2111,9 +2144,13 @@ def write_justfile_test_scope_self_test_file(
         "  -p kuc-consumer-app \\\n"
         "  --all-targets --all-features --locked\n"
         'python3 scripts/assert-strict-coverage-json.py --validate-profile "${coverage_report_path}"\n'
+        "run_cargo llvm-cov report --quiet \\\n"
+        '  "${coverage_packages[@]}" --lcov \\\n'
+        '  --output-path "${coverage_lcov_path}" \\\n'
+        "  --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\\.rs$|[^/]+_tests\\.rs$)'\n"
         'write_coverage_profile_state "${pending_profile_signature}"\n'
         "coverage_transaction_active=0\n"
-        'if python3 scripts/assert-strict-coverage-json.py "${coverage_report_path}"; then\n'
+        'if python3 scripts/assert-strict-coverage-lcov.py "${coverage_lcov_path}"; then\n'
         '  write_coverage_strict_state "passed:${pending_profile_signature}"\n'
         "else\n"
         '  write_coverage_strict_state "failed:${pending_profile_signature}"\n'
@@ -2136,6 +2173,21 @@ def write_justfile_test_scope_self_test_file(
         "strict_coverage_failures(good)\n"
         "strict_coverage_failures(bad)\n"
         "strict_coverage_failures(malformed)\n",
+        encoding="utf-8",
+    )
+    (scripts / "assert-strict-coverage-lcov.py").write_text(
+        "def strict_coverage_failures(report: str):\n"
+        '    print("coverage lines must be 100%")\n'
+        '    print("coverage functions must be 100%")\n'
+        '    print("coverage report has no source files")\n'
+        "if strict_coverage_failures(good):\n"
+        "    pass\n"
+        "if not strict_coverage_failures(bad_line):\n"
+        "    pass\n"
+        "if not strict_coverage_failures(bad_function):\n"
+        "    pass\n"
+        "if not strict_coverage_failures(\"\"):\n"
+        "    pass\n",
         encoding="utf-8",
     )
 

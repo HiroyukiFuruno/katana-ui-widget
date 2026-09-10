@@ -1,5 +1,7 @@
 use super::{ConsumerArtifactLeafId, GenericEffectClass, GenericInteractionClass};
-use crate::egui::text_command_surface::EguiTextCommandSurfacePresentationToken;
+use crate::egui::text_command_surface::{
+    EguiTextCommandSurfaceHostProjectionLease, EguiTextCommandSurfacePresentationToken,
+};
 
 /// One plan binding. Its presentation token remains opaque and is consumed by KUC.
 pub struct ConsumerArtifactStageBinding {
@@ -7,10 +9,46 @@ pub struct ConsumerArtifactStageBinding {
     pub(super) interaction: GenericInteractionClass,
     pub(super) effect: GenericEffectClass,
     pub(super) token: Option<EguiTextCommandSurfacePresentationToken>,
+    pub(super) lease: Option<EguiTextCommandSurfaceHostProjectionLease>,
     action_target: Option<String>,
 }
 
 impl ConsumerArtifactStageBinding {
+    pub(super) fn token(&self) -> Option<&EguiTextCommandSurfacePresentationToken> {
+        self.token.as_ref().or_else(|| {
+            self.lease
+                .as_ref()
+                .map(EguiTextCommandSurfaceHostProjectionLease::token)
+        })
+    }
+
+    pub(super) fn take_token(&mut self) -> Option<EguiTextCommandSurfacePresentationToken> {
+        self.token.take()
+    }
+
+    pub(super) fn take_root_lease(&mut self) -> Option<EguiTextCommandSurfaceHostProjectionLease> {
+        self.lease.take()
+    }
+
+    /// Retains one KUC-issued lease without exposing its token or host router.
+    #[must_use]
+    pub fn from_host_projection_lease(
+        leaf: ConsumerArtifactLeafId,
+        action_target: impl Into<String>,
+        interaction: GenericInteractionClass,
+        effect: GenericEffectClass,
+        lease: EguiTextCommandSurfaceHostProjectionLease,
+    ) -> Self {
+        Self {
+            leaf,
+            interaction,
+            effect,
+            token: None,
+            lease: Some(lease),
+            action_target: Some(action_target.into()),
+        }
+    }
+
     #[must_use]
     pub fn new(
         leaf: ConsumerArtifactLeafId,
@@ -35,6 +73,7 @@ impl ConsumerArtifactStageBinding {
             interaction,
             effect,
             token: Some(token),
+            lease: None,
             action_target: Some(action_target.into()),
         }
     }

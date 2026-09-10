@@ -7,9 +7,9 @@ use crate::egui::text_command_surface::EguiTextCommandSurfaceFloatingPresentatio
 #[cfg(target_os = "linux")]
 use crate::egui::text_command_surface::EguiTextCommandSurfaceSearchPresentation;
 use crate::egui::text_command_surface::{
-    EguiTextCommandSurfaceHostProjectionEncoder, EguiTextCommandSurfaceHostTargetToken,
-    EguiTextCommandSurfacePresentation, EguiTextCommandSurfacePresentationToken,
-    TextCommandSurfaceStyle,
+    EguiTextCommandSurfaceHostProjectionEncoder, EguiTextCommandSurfaceHostProjectionLease,
+    EguiTextCommandSurfaceHostTargetToken, EguiTextCommandSurfacePresentation,
+    EguiTextCommandSurfacePresentationToken, TextCommandSurfaceStyle,
 };
 #[cfg(target_os = "linux")]
 use crate::molecule::command_chrome::{
@@ -48,6 +48,23 @@ pub(super) fn binding(leaf: &str, revision: u64) -> ConsumerArtifactStageBinding
         GenericEffectClass::NoHostEffect,
         token(revision),
     )
+}
+
+#[test]
+fn lease_binding_retains_the_complete_host_projection_lease() {
+    let token = token(1);
+    let lease = EguiTextCommandSurfaceHostProjectionLease::new(token, |_context| Ok(None));
+    let binding = ConsumerArtifactStageBinding::from_host_projection_lease(
+        ConsumerArtifactLeafId::new("lease-binding").expect("leaf"),
+        "host-action",
+        GenericInteractionClass::TextInput,
+        GenericEffectClass::NoHostEffect,
+        lease,
+    );
+
+    assert!(binding.token.is_none());
+    assert!(binding.lease.is_some());
+    assert_eq!(binding.token().expect("lease token").revision(), 1);
 }
 
 #[cfg(target_os = "linux")]

@@ -95,6 +95,7 @@ kuc-guardrails: consumer-app-contract
     python3 scripts/test_verify_release_target.py
     python3 scripts/storybook_native_window_probe.py --self-test
     python3 scripts/assert-strict-coverage-json.py --self-test
+    python3 scripts/assert-strict-coverage-lcov.py --self-test
     python3 scripts/coverage/image-runtime-id.py --self-test
     python3 scripts/assert-kuc-release-readiness.py --self-test
     python3 scripts/assert-kuc-release-readiness.py

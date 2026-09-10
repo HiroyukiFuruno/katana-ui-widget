@@ -11,6 +11,7 @@ pub struct FullTextCommandSurfaceScenarioSession {
     pub(super) id: FullTextCommandSurfaceScenarioId,
     pub(super) state: Rc<RefCell<ScenarioSessionState>>,
     pub(super) next_revision: Cell<u64>,
+    pub(super) consumer_artifact: bool,
 }
 
 #[derive(Default)]

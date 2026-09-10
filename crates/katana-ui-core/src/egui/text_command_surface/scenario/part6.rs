@@ -96,3 +96,67 @@ fn stages(id: FullTextCommandSurfaceScenarioId) -> Vec<FullTextCommandSurfaceRaw
     }
     stages
 }
+
+fn consumer_artifact_stages() -> Vec<FullTextCommandSurfaceRawInputStage> {
+    vec![
+        stage(vec![egui::Event::Text(String::from("consumer artifact input"))], 1.0),
+        stage(
+            vec![egui::Event::Ime(egui::ImeEvent::Commit(String::from(
+                "入力",
+            )))],
+            IME_PIXELS_PER_POINT,
+        ),
+        stage(
+            vec![
+                egui::Event::PointerMoved(egui::pos2(260.0, 140.0)),
+                primary_pointer(egui::pos2(260.0, 140.0), true),
+                primary_pointer(egui::pos2(300.0, 140.0), false),
+            ],
+            1.0,
+        ),
+        stage(
+            vec![egui::Event::MouseWheel {
+                unit: egui::MouseWheelUnit::Point,
+                delta: egui::vec2(0.0, 96.0),
+                phase: egui::TouchPhase::Move,
+                modifiers: egui::Modifiers::NONE,
+            }],
+            1.0,
+        ),
+        stage(
+            vec![
+                egui::Event::PointerMoved(egui::pos2(32.0, 24.0)),
+                primary_pointer(egui::pos2(32.0, 24.0), true),
+                primary_pointer(egui::pos2(32.0, 24.0), false),
+            ],
+            1.0,
+        ),
+        stage(
+            vec![
+                egui::Event::PointerMoved(egui::pos2(260.0, 96.0)),
+                primary_pointer(egui::pos2(260.0, 96.0), true),
+                primary_pointer(egui::pos2(260.0, 96.0), false),
+            ],
+            1.0,
+        ),
+        stage(vec![key_press(egui::Key::Tab)], 1.0),
+        stage(
+            vec![
+                egui::Event::PointerMoved(egui::pos2(260.0, 140.0)),
+                egui::Event::PointerButton {
+                    pos: egui::pos2(260.0, 140.0),
+                    button: egui::PointerButton::Secondary,
+                    pressed: true,
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ],
+            1.0,
+        ),
+        stage(vec![key_press(egui::Key::Enter)], 1.0),
+        stage_with_screen(
+            Vec::new(),
+            1.0,
+            egui::vec2(RESIZED_WIDTH, RESIZED_HEIGHT),
+        ),
+    ]
+}

@@ -106,7 +106,7 @@ impl UiTreeTextRenderer {
         } else {
             metrics.background_height = metrics
                 .background_height
-                .max(line_count.saturating_mul(metrics.line_height));
+                .max(text_line_box_height(line_count, metrics));
         }
         let clip_height = text_clip_height(requested_height, line_count, metrics);
 
@@ -203,7 +203,13 @@ fn text_advance_height(
     if requested_height > 0 {
         return requested_height;
     }
-    line_count.saturating_mul(metrics.line_height)
+    text_line_box_height(line_count, metrics)
+}
+
+fn text_line_box_height(line_count: usize, metrics: UiTreeTextMetrics) -> usize {
+    (line_count as f32 * metrics.line_box_height)
+        .ceil()
+        .max(1.0) as usize
 }
 
 fn explicit_or_content_height(requested_height: usize, content_height: usize) -> usize {
@@ -223,9 +229,7 @@ fn text_clip_height(
     metrics: UiTreeTextMetrics,
 ) -> usize {
     let line_height = metrics.top_margin.saturating_add(
-        line_count
-            .saturating_mul(metrics.line_height)
-            .saturating_add(text_clip_guard(metrics)),
+        text_line_box_height(line_count, metrics).saturating_add(text_clip_guard(metrics)),
     );
     if requested_height > 0 {
         return requested_height.max(line_height);
@@ -275,7 +279,9 @@ mod tests {
         let metrics = UiTreeTextMetrics {
             font_size: 24.79,
             line_height: 36,
+            line_box_height: 36.0,
             top_margin: 0,
+            baseline_from_line_box_top: None,
             background_height: 34,
             highlight_height: 34,
             underline_offset: 30,
@@ -291,7 +297,9 @@ mod tests {
         let metrics = UiTreeTextMetrics {
             font_size: 19.83,
             line_height: 34,
+            line_box_height: 34.0,
             top_margin: 29,
+            baseline_from_line_box_top: None,
             background_height: 34,
             highlight_height: 5,
             underline_offset: 24,

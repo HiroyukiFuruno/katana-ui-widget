@@ -8,6 +8,8 @@ use katana_ui_core::text_raster::{
 mod text_types;
 pub use text_types::TextRenderer;
 pub(crate) use text_types::{RichTextLineSpan, RichTextStyle};
+#[path = "text_line_box.rs"]
+mod text_line_box;
 #[path = "text_runtime.rs"]
 mod text_runtime;
 #[path = "text_style.rs"]
@@ -132,7 +134,8 @@ impl TextRenderer {
             canvas,
             spans,
             x,
-            y,
+            y as f32,
+            y as f32,
             canvas.scale_factor(),
             raster_vertical_scale,
             font,
@@ -195,7 +198,8 @@ impl TextRenderer {
             canvas,
             vec![ui_span(text, style)],
             x,
-            y,
+            y as f32,
+            y as f32,
             scale_factor,
             style.raster_vertical_scale,
             self.font_with_size(style.size),
@@ -206,8 +210,57 @@ impl TextRenderer {
 
 #[cfg(test)]
 mod tests {
-    use super::{Canvas, RichTextLineSpan, RichTextStyle, TextRenderer};
+    use super::{Canvas, RichTextLineSpan, RichTextStyle, TextRenderer, ui_span};
     use katana_ui_core::facade::UiCoreFacade;
+
+    #[test]
+    fn target_baseline_maps_to_raster_origin_without_consumer_specific_offsets() {
+        let origin = super::text_line_box::draw_origin_for_target_baseline(8.5, 12.5, 9.0);
+
+        assert_eq!(12.0, origin);
+        assert_eq!(21.0, origin + 9.0);
+    }
+
+    #[test]
+    fn selection_runs_track_logical_line_box_top_when_paint_origin_is_offset() {
+        let renderer = TextRenderer::load(&UiCoreFacade::new(ThemeSnapshot::light()), "body");
+        let mut canvas = Canvas::new(180, 80, 0x101010);
+        let style = RichTextStyle::new(14.0, 0xeeeeee);
+        let line_box_top = 10.5;
+        let line_box_height = 20.5;
+        let baseline_from_line_box_top = {
+            let font = renderer.font_with_size(style.size);
+            let raster_baseline = renderer.raster_baseline(
+                &[ui_span("selection", style)],
+                font,
+                line_box_height,
+                canvas.scale_factor(),
+            );
+            raster_baseline + 3.5
+        };
+        let paint_origin = super::text_line_box::draw_origin_for_target_baseline(
+            line_box_top,
+            baseline_from_line_box_top,
+            baseline_from_line_box_top - 3.5,
+        );
+
+        renderer.draw_signed_styled_in_line_box(
+            &mut canvas,
+            "selection",
+            4,
+            line_box_top,
+            line_box_height,
+            baseline_from_line_box_top,
+            style,
+        );
+        let run = canvas
+            .text_runs()
+            .first()
+            .expect("selectable text run should be recorded");
+
+        assert_eq!(line_box_top.round() as usize, run.y());
+        assert_ne!(paint_origin.round() as usize, run.y());
+    }
     use katana_ui_core::theme::ThemeSnapshot;
 
     #[test]
@@ -223,6 +276,15 @@ mod tests {
         renderer.draw_emoji(&mut canvas, "😀", 4, 24, 14.0, 0xffffff);
         renderer.draw_signed(&mut canvas, "signed", -2, 40, 14.0, 0xffffff);
         renderer.draw_signed_styled(&mut canvas, "styled", 4, 52, style);
+        renderer.draw_signed_styled_in_line_box(
+            &mut canvas,
+            "line box",
+            4,
+            56.5,
+            20.5,
+            14.0,
+            style,
+        );
         renderer.draw_rich_line_signed(
             &mut canvas,
             &[RichTextLineSpan {
@@ -231,6 +293,17 @@ mod tests {
             }],
             4,
             64,
+        );
+        renderer.draw_rich_line_signed_in_line_box(
+            &mut canvas,
+            &[RichTextLineSpan {
+                text: "rich line box".to_owned(),
+                style,
+            }],
+            4,
+            68.5,
+            20.5,
+            14.0,
         );
 
         assert!(renderer.measure_width("plain", 14.0) > 0);

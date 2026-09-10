@@ -1,6 +1,17 @@
 pub(super) fn presentation(
     id: FullTextCommandSurfaceScenarioId,
 ) -> EguiTextCommandSurfacePresentation {
+    presentation_for(id, false)
+}
+
+pub(super) fn consumer_artifact_presentation() -> EguiTextCommandSurfacePresentation {
+    presentation_for(FullTextCommandSurfaceScenarioId::Resting, true)
+}
+
+fn presentation_for(
+    id: FullTextCommandSurfaceScenarioId,
+    consumer_artifact: bool,
+) -> EguiTextCommandSurfacePresentation {
     let mut text = TextSurfacePresentation::from_props(
         TextSurface::new(
             TextSurfaceProps::new(
@@ -13,10 +24,13 @@ pub(super) fn presentation(
         .props(),
     );
     text.automatic_gutter = Some(TextSurfaceAutomaticGutterPresentation::new());
-    if matches!(
-        id,
-        FullTextCommandSurfaceScenarioId::Find | FullTextCommandSurfaceScenarioId::WorkspaceTabs
-    ) {
+    if consumer_artifact
+        || matches!(
+            id,
+            FullTextCommandSurfaceScenarioId::Find
+                | FullTextCommandSurfaceScenarioId::WorkspaceTabs
+        )
+    {
         text.annotations = generic_find_annotations(&text.value);
     }
     text.readonly = matches!(id, FullTextCommandSurfaceScenarioId::Readonly);
@@ -25,20 +39,24 @@ pub(super) fn presentation(
         text_state_id: Some(UiStateId::new("kuc-scenario-text")),
         text,
         toolbar: Some(toolbar(readonly)),
-        floating: matches!(id, FullTextCommandSurfaceScenarioId::Selection).then(|| {
+        floating: (consumer_artifact
+            || matches!(id, FullTextCommandSurfaceScenarioId::Selection))
+        .then(|| {
             EguiTextCommandSurfaceFloatingPresentation {
                 toolbar: toolbar(false),
                 visibility: FloatingCommandToolbarVisibility::Visible,
             }
         }),
-        search: matches!(
-            id,
-            FullTextCommandSurfaceScenarioId::Find
-                | FullTextCommandSurfaceScenarioId::WorkspaceTabs
-        )
+        search: (consumer_artifact
+            || matches!(
+                id,
+                FullTextCommandSurfaceScenarioId::Find
+                    | FullTextCommandSurfaceScenarioId::WorkspaceTabs
+            ))
         .then(search),
-        context_menu: matches!(id, FullTextCommandSurfaceScenarioId::Context)
-            .then(|| context_menu(true)),
+        context_menu: (consumer_artifact
+            || matches!(id, FullTextCommandSurfaceScenarioId::Context))
+        .then(|| context_menu(true)),
     }
 }
 

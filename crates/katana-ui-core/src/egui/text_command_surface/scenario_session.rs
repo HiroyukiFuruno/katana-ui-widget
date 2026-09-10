@@ -2,6 +2,7 @@
 
 use super::scenario::{
     self, FullTextCommandSurfaceScenarioError, FullTextCommandSurfaceScenarioId,
+    consumer_artifact_presentation,
 };
 use super::{
     EguiTextCommandSurfaceHostProjectionLease, KucOpaqueHostEffectBatch, KucRootEventBatchContext,
@@ -25,6 +26,19 @@ impl FullTextCommandSurfaceScenarioSession {
             id,
             state: Rc::new(RefCell::new(ScenarioSessionState::default())),
             next_revision: Cell::new(1),
+            consumer_artifact: false,
+        }
+    }
+
+    /// Creates the additive consumer-artifact session without extending the
+    /// stable scenario ID enum.
+    #[must_use]
+    pub fn new_consumer_artifact() -> Self {
+        Self {
+            id: FullTextCommandSurfaceScenarioId::Resting,
+            state: Rc::new(RefCell::new(ScenarioSessionState::default())),
+            next_revision: Cell::new(1),
+            consumer_artifact: true,
         }
     }
 
@@ -56,7 +70,11 @@ impl FullTextCommandSurfaceScenarioSession {
         &self,
     ) -> Result<EguiTextCommandSurfaceHostProjectionLease, FullTextCommandSurfaceScenarioError>
     {
-        let presentation = self.state.borrow().presentation(self.id);
+        let presentation = if self.consumer_artifact {
+            self.state.borrow().consumer_artifact_presentation()
+        } else {
+            self.state.borrow().presentation(self.id)
+        };
         let projected_text = presentation.text.value.clone();
         let revision = self.next_revision()?;
         let state = Rc::clone(&self.state);
@@ -89,7 +107,17 @@ impl ScenarioSessionState {
         &self,
         id: FullTextCommandSurfaceScenarioId,
     ) -> super::EguiTextCommandSurfacePresentation {
-        let mut presentation = scenario::presentation(id);
+        self.apply_to_presentation(scenario::presentation(id))
+    }
+
+    fn consumer_artifact_presentation(&self) -> super::EguiTextCommandSurfacePresentation {
+        self.apply_to_presentation(consumer_artifact_presentation())
+    }
+
+    fn apply_to_presentation(
+        &self,
+        mut presentation: super::EguiTextCommandSurfacePresentation,
+    ) -> super::EguiTextCommandSurfacePresentation {
         if let Some(text) = &self.text {
             presentation.text.value.clone_from(text);
             presentation.text.annotations.clear();

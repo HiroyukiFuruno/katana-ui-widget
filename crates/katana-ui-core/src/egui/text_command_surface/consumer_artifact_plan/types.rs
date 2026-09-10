@@ -257,6 +257,7 @@ impl std::fmt::Display for ConsumerArtifactPlanError {
 impl std::error::Error for ConsumerArtifactPlanError {}
 
 mod execution;
+mod issuer;
 mod receipt;
 mod stage_binding;
 mod stage_interactions;
@@ -266,5 +267,6 @@ mod tests;
 mod text_interactions;
 mod unicode_evidence;
 
-pub use execution::{ConsumerArtifactPlanIssuer, IssuedConsumerArtifactPlan};
+pub use execution::IssuedConsumerArtifactPlan;
+pub use issuer::ConsumerArtifactPlanIssuer;
 pub use receipt::ConsumerArtifactForwardingReceipt;

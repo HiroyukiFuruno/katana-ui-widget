@@ -2943,8 +2943,11 @@ muxer_capability_verified;
         source,
     )
     write_text(
-        root / "crates/katana-ui-core/src/egui/text_command_surface/host_root.rs",
-        "pub fn retain(\n"
+        root / "crates/katana-ui-core/src/egui/text_command_surface/host_root/factory_api.rs",
+        "pub fn retain(\n",
+    )
+    write_text(
+        root / "crates/katana-ui-core/src/egui/text_command_surface/host_root/token_api.rs",
         "pub fn token(\n",
     )
     write_text(

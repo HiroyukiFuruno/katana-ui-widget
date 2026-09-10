@@ -91,6 +91,7 @@ coverage_image_id="${KUC_COVERAGE_IMAGE_ID:-}"
 coverage_profile_path="${coverage_storage_dir}/kuc-workspace-coverage-profile-v3.sha256"
 coverage_strict_state_path="${coverage_profile_path}.strict-state"
 coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"
+coverage_lcov_path="${coverage_storage_dir}/kuc-workspace-coverage.lcov"
 coverage_started_at="${SECONDS}"
 coverage_transaction_active=0
 coverage_target_ownership_verified=0
@@ -232,6 +233,7 @@ coverage_profile_signature() {
       Justfile \
       scripts/run-strict-coverage.sh \
       scripts/assert-strict-coverage-json.py \
+      scripts/assert-strict-coverage-lcov.py \
       scripts/coverage/run-test-binaries.py \
       scripts/coverage/image-runtime-id.py \
       scripts/coverage/run-container.sh \
@@ -434,9 +436,14 @@ else
     --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\.rs$|[^/]+_tests\.rs$)'
 fi
 python3 scripts/assert-strict-coverage-json.py --validate-profile "${coverage_report_path}"
+run_cargo llvm-cov report --quiet \
+  "${coverage_packages[@]}" \
+  --lcov \
+  --output-path "${coverage_lcov_path}" \
+  --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\.rs$|[^/]+_tests\.rs$)'
 write_coverage_profile_state "${pending_profile_signature}"
 coverage_transaction_active=0
-if python3 scripts/assert-strict-coverage-json.py "${coverage_report_path}"; then
+if python3 scripts/assert-strict-coverage-lcov.py "${coverage_lcov_path}"; then
   write_coverage_strict_state "passed:${pending_profile_signature}"
 else
   write_coverage_strict_state "failed:${pending_profile_signature}"

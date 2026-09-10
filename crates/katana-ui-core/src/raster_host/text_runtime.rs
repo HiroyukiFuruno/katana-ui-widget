@@ -22,12 +22,14 @@ const TRANSPARENT_RGBA: [u8; RGBA_COMPONENT_COUNT] = [0; RGBA_COMPONENT_COUNT];
 const VERTICAL_SCALE_COVERAGE_ROWS_PER_UNIT: f32 = 6.0;
 
 impl TextRenderer {
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn draw_request(
         &self,
         canvas: &mut Canvas,
         spans: Vec<UiTextSpan>,
         x: isize,
-        y: usize,
+        paint_origin_y: f32,
+        text_run_origin_y: f32,
         scale_factor: f32,
         raster_vertical_scale: f32,
         font: FontToken,
@@ -40,8 +42,15 @@ impl TextRenderer {
         let Some(raster) = self.rasterize(spans, font, scale_factor, line_height_px) else {
             return;
         };
-        draw_raster(canvas, &raster, x, y, scale_factor, raster_vertical_scale);
-        record_runtime_text_run(canvas, &text, &raster, x, y);
+        draw_raster(
+            canvas,
+            &raster,
+            x,
+            paint_origin_y,
+            scale_factor,
+            raster_vertical_scale,
+        );
+        record_runtime_text_run(canvas, &text, &raster, x, text_run_origin_y);
     }
 
     pub(super) fn measure_request(
@@ -76,6 +85,25 @@ impl TextRenderer {
         request.line_height_px = line_height_px;
         request.scale_factor = normalized_scale_factor(scale_factor);
         self.rasterizer.borrow_mut().rasterize(&request).ok()
+    }
+
+    pub(super) fn raster_baseline(
+        &self,
+        spans: &[UiTextSpan],
+        font: FontToken,
+        line_box_height: f32,
+        scale_factor: f32,
+    ) -> f32 {
+        let scale = normalized_scale_factor(scale_factor);
+        let mut request = PlatformTextRasterRequest::from_text(" ", font, TRANSPARENT_RGBA);
+        request.spans = spans.to_vec();
+        request.line_height_px = line_box_height;
+        request.scale_factor = scale;
+        self.rasterizer
+            .borrow_mut()
+            .measure_line_metrics(&request)
+            .map(|metrics| metrics.baseline_from_raster_origin_px)
+            .unwrap_or_default()
     }
 
     pub(super) fn font_with_size(&self, size: f32) -> FontToken {
@@ -142,13 +170,13 @@ fn draw_raster(
     canvas: &mut Canvas,
     raster: &PlatformTextRaster,
     origin_x: isize,
-    origin_y: usize,
+    origin_y: f32,
     scale_factor: f32,
     raster_vertical_scale: f32,
 ) {
     let scale = normalized_scale_factor(scale_factor);
     let origin_x = (origin_x as f64 * f64::from(scale)).round() as isize;
-    let origin_y = (origin_y as f64 * f64::from(scale)).round() as isize;
+    let origin_y = physical_draw_origin(origin_y, scale);
     for (index, pixel) in raster.rgba_pixels.iter().enumerate() {
         let [red, green, blue, alpha] = *pixel;
         if alpha == 0 {
@@ -165,12 +193,16 @@ fn draw_raster(
     }
 }
 
+fn physical_draw_origin(origin_y: f32, scale_factor: f32) -> isize {
+    (f64::from(origin_y) * f64::from(normalized_scale_factor(scale_factor))).round() as isize
+}
+
 fn record_runtime_text_run(
     canvas: &mut Canvas,
     text: &str,
     raster: &PlatformTextRaster,
     x: isize,
-    y: usize,
+    y: f32,
 ) {
     let Some(origin_x) = usize::try_from(x).ok() else {
         return;
@@ -179,7 +211,7 @@ fn record_runtime_text_run(
     canvas.record_text_run_with_glyph_widths(
         text,
         origin_x,
-        y,
+        y.round().max(0.0) as usize,
         selection_width,
         raster
             .grapheme_bounds
@@ -287,6 +319,12 @@ mod tests {
         assert_eq!(FontFamily::Proportional, font.family);
         assert_eq!(FALLBACK_FONT_SIZE, font.size);
         assert_eq!(REGULAR_WEIGHT, font.weight);
+    }
+
+    #[test]
+    fn fractional_draw_origin_is_quantized_once_at_the_physical_canvas_boundary() {
+        assert_eq!(23, physical_draw_origin(11.25, 2.0));
+        assert_eq!(11, physical_draw_origin(11.25, 1.0));
     }
 
     #[test]

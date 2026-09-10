@@ -2,8 +2,9 @@ use crate::render_model::UiTextSpan;
 use crate::text_raster::catalog::PlatformRegularFontFaces;
 use crate::text_raster::catalog_types::PlatformColorEmojiFaceRecord;
 use crate::text_raster::model::{
-    PlatformTextGraphemeBounds, PlatformTextMetrics, PlatformTextMetricsRequest,
-    PlatformTextRasterError, PlatformTextRasterRequest, RGBA_CHANNEL_COUNT,
+    PlatformTextGraphemeBounds, PlatformTextLineMetrics, PlatformTextMetrics,
+    PlatformTextMetricsRequest, PlatformTextRasterError, PlatformTextRasterRequest,
+    RGBA_CHANNEL_COUNT,
 };
 use cosmic_text::{Attrs, Buffer, FontSystem, Metrics, Shaping, SwashCache, Wrap};
 
@@ -71,6 +72,61 @@ pub(crate) struct LayoutRaster {
 }
 
 impl TextLayoutRasterizer {
+    pub(crate) fn line_metrics(
+        font_system: &mut FontSystem,
+        request: &PlatformTextRasterRequest,
+        emoji_face: &PlatformColorEmojiFaceRecord,
+        text_faces: &ResolvedTextFaces,
+    ) -> Result<PlatformTextLineMetrics, PlatformTextRasterError> {
+        if request.spans.iter().all(|span| span.text.is_empty()) {
+            return Err(PlatformTextRasterError::EmptyText);
+        }
+        if !request.scale_factor.is_finite() || !request.font.size.is_finite() {
+            return Err(PlatformTextRasterError::NonFiniteLayoutExtent);
+        }
+        let scale = request.normalized_scale_factor();
+        let metrics = Metrics::new(
+            request.font.size.max(MIN_FONT_SIZE_PX) * scale,
+            request.normalized_line_height() * scale,
+        );
+        let mut buffer = Buffer::new(font_system, metrics);
+        let mut buffer = buffer.borrow_with(font_system);
+        buffer.set_wrap(Wrap::Word);
+        buffer.set_size(
+            Some(request.normalized_max_width(FALLBACK_LAYOUT_WIDTH, MAX_LAYOUT_WIDTH) * scale),
+            Some(FALLBACK_LAYOUT_HEIGHT * scale),
+        );
+        let runs = normalized_runs(&request.spans);
+        let rich_text = runs
+            .iter()
+            .map(|span| {
+                attrs_for_span(
+                    &request.font,
+                    span,
+                    request.fallback_color_rgba,
+                    emoji_face,
+                    text_faces,
+                )
+                .map(|attrs| (span.text.as_str(), attrs))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        buffer.set_rich_text(rich_text, &Attrs::new(), Shaping::Advanced, None);
+        let max_ascent = buffer
+            .line_layout(0)
+            .and_then(|lines| lines.first())
+            .map(|line| line.max_ascent)
+            .ok_or(PlatformTextRasterError::EmptyText)?;
+        let line_top = buffer
+            .layout_runs()
+            .next()
+            .map(|run| run.line_top)
+            .ok_or(PlatformTextRasterError::EmptyText)?;
+        Ok(PlatformTextLineMetrics {
+            baseline_from_raster_origin_px: (line_top + max_ascent) / scale,
+            line_box_height_px: request.normalized_line_height(),
+        })
+    }
+
     pub(crate) fn measure(
         font_system: &mut FontSystem,
         request: &PlatformTextMetricsRequest,

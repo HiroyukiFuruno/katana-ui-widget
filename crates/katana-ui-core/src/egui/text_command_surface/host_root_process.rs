@@ -4,10 +4,11 @@ use super::super::root::{EguiTextCommandSurfaceRoot, EguiTextCommandSurfaceRootO
 use super::super::source_address_projection_lease::SourceAddressProjectionLease;
 use super::super::status_diagnostics_projection_lease::StatusDiagnosticsProjectionLease;
 use super::super::tab_strip_projection_lease::TabStripProjectionLease;
+use super::super::types::TextCommandSurfaceStyle;
 use super::EguiTextCommandSurfaceCommandFamilyProjection;
 use super::host_root_surface::surface_from_presentation;
 use super::host_root_token_codec::DecodedRootPresentation;
-use super::{EguiTextCommandSurfaceRootFactoryError, TextCommandSurfaceStyle};
+use super::host_root_types::EguiTextCommandSurfaceRootFactoryError;
 
 pub(crate) struct HostRootProcess {
     root: EguiTextCommandSurfaceRoot,

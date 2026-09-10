@@ -99,3 +99,64 @@ fn span_lines_cover_bold_and_clipped_rendering_paths() {
         "a fully clipped span line must not draw"
     );
 }
+
+#[test]
+fn document_baseline_metrics_render_plain_and_spans_with_fractional_line_boxes() {
+    let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+    let renderer = TextRenderer::load(&facade, "body");
+    let node: UiNode = Text::new("Baseline")
+        .text_role("body")
+        .text_spans(vec![UiTextSpan::plain("Baseline")])
+        .into();
+    let mut metrics = UiTreeTextMetrics::for_node(&node);
+    metrics.line_height = 32;
+    metrics.line_box_height = 31.5;
+    metrics.baseline_from_line_box_top = Some(18.5);
+    let area = UiTreeRenderArea {
+        x: 0,
+        y: 0,
+        width: 320,
+        height: 120,
+        scroll_y: 0.0,
+    };
+    let palette = crate::raster_host::ui_tree_canvas_palette::UiTreeCanvasPalette::from_theme(
+        &ThemeSnapshot::dark(),
+    );
+    let mut canvas = Canvas::new(320, 120, TEST_BACKGROUND);
+
+    UiTreeTextLines::draw_plain(
+        &mut canvas,
+        UiTreeTextLineContext {
+            renderer: &renderer,
+            code_renderer: &renderer,
+            node: &node,
+            area,
+            palette,
+            metrics,
+        },
+        0,
+        0,
+        8,
+    );
+    UiTreeTextLines::draw_spans(
+        &mut canvas,
+        UiTreeTextLineContext {
+            renderer: &renderer,
+            code_renderer: &renderer,
+            node: &node,
+            area,
+            palette,
+            metrics,
+        },
+        0,
+        48,
+    );
+
+    assert!(
+        canvas
+            .pixels()
+            .iter()
+            .any(|pixel| *pixel != TEST_BACKGROUND),
+        "a fractional document line box must draw plain and span text"
+    );
+}

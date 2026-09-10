@@ -278,6 +278,12 @@ fn issuer_default_and_defensive_effect_display_remain_explicit() {
         ConsumerArtifactPlanIssuer::default().issue(ConsumerArtifactPlanV1::new(1, Vec::new())),
         Err(ConsumerArtifactPlanError::EmptyPlan)
     ));
+    assert!(matches!(
+        ConsumerArtifactPlanIssuer::new()
+            .clone()
+            .issue(ConsumerArtifactPlanV1::new(1, Vec::new())),
+        Err(ConsumerArtifactPlanError::EmptyPlan)
+    ));
     assert_eq!(
         ConsumerArtifactPlanError::UnsupportedEffectClass(GenericEffectClass::NoHostEffect)
             .to_string(),

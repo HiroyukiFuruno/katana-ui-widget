@@ -5,6 +5,10 @@ use super::canvas_model::CanvasImageSurfaceExtentMode;
 use super::canvas_scale::{normalized_scale, physical_size};
 const RECT_BORDER_WIDTH: usize = 1;
 
+fn physical_fractional_position(logical: f32, scale_factor: f32) -> usize {
+    (f64::from(logical.max(0.0)) * f64::from(scale_factor)).round() as usize
+}
+
 impl Canvas {
     #[must_use]
     pub fn new(width: usize, height: usize, color: u32) -> Self {
@@ -101,6 +105,24 @@ impl Canvas {
         }
     }
 
+    pub(crate) fn fill_rect_at_logical_y(
+        &mut self,
+        x: usize,
+        y: f32,
+        width: usize,
+        height: f32,
+        color: u32,
+    ) {
+        let Some(rect) = self.visible_rect_at_logical_y(x, y, width, height) else {
+            return;
+        };
+        for current_y in rect.y..rect.bottom() {
+            let start = current_y * self.width + rect.x;
+            let end = current_y * self.width + rect.right();
+            self.pixels[start..end].fill(color);
+        }
+    }
+
     pub(crate) fn with_clip(
         &mut self,
         x: usize,
@@ -132,6 +154,39 @@ impl Canvas {
         height: usize,
     ) -> Option<CanvasClip> {
         let rect = self.to_physical_clip(x, y, width, height)?;
+        match self.clip {
+            Some(clip) => rect.intersect(clip),
+            None => Some(rect),
+        }
+    }
+
+    fn visible_rect_at_logical_y(
+        &self,
+        x: usize,
+        y: f32,
+        width: usize,
+        height: f32,
+    ) -> Option<CanvasClip> {
+        if !y.is_finite() || !height.is_finite() || height <= 0.0 || width == 0 {
+            return None;
+        }
+        let left = self.to_physical_x(x);
+        let top = physical_fractional_position(y, self.scale_factor()).min(self.height());
+        let bottom =
+            physical_fractional_position(y + height, self.scale_factor()).min(self.height());
+        if left >= self.width() || top >= self.height() {
+            return None;
+        }
+        let right = self.to_physical_x(x.saturating_add(width)).max(left + 1);
+        if bottom <= top {
+            return None;
+        }
+        let rect = CanvasClip {
+            x: left,
+            y: top,
+            width: right - left,
+            height: bottom - top,
+        };
         match self.clip {
             Some(clip) => rect.intersect(clip),
             None => Some(rect),

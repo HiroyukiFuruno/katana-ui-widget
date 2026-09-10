@@ -21,32 +21,38 @@ const GREEN_SHIFT: u32 = 8;
 pub(super) fn draw_span_background(
     canvas: &mut Canvas,
     x: usize,
-    y: usize,
+    y: f32,
     width: usize,
     style: UiTextSpanStyle,
     palette: UiTreeCanvasPalette,
     metrics: UiTreeTextMetrics,
 ) {
     if style.current_highlight {
-        canvas.fill_rect(
+        canvas.fill_rect_at_logical_y(
             x,
             y,
             width,
-            metrics.highlight_height,
+            metrics.highlight_box_height(),
             CURRENT_HIGHLIGHT_BACKGROUND,
         );
         return;
     }
     if style.highlight {
-        canvas.fill_rect(x, y, width, metrics.highlight_height, HIGHLIGHT_BACKGROUND);
+        canvas.fill_rect_at_logical_y(
+            x,
+            y,
+            width,
+            metrics.highlight_box_height(),
+            HIGHLIGHT_BACKGROUND,
+        );
         return;
     }
     if style.inline_code {
-        canvas.fill_rect(
+        canvas.fill_rect_at_logical_y(
             x.saturating_sub(INLINE_CODE_LEFT_PADDING),
-            y.saturating_add(inline_code_y_offset(metrics)),
+            y + inline_code_y_offset(metrics) as f32,
             width.saturating_add(INLINE_CODE_EXTRA_WIDTH),
-            inline_code_height(metrics),
+            inline_code_height(metrics) as f32,
             palette.inline_code_background,
         );
     }
@@ -106,7 +112,7 @@ mod tests {
         draw_span_background(
             &mut canvas,
             20,
-            10,
+            10.0,
             24,
             UiTextSpanStyle {
                 inline_code: true,
@@ -139,7 +145,7 @@ mod tests {
         draw_span_background(
             &mut canvas,
             10,
-            8,
+            8.0,
             20,
             UiTextSpanStyle {
                 current_highlight: true,
@@ -158,7 +164,7 @@ mod tests {
         draw_span_background(
             &mut canvas,
             40,
-            8,
+            8.0,
             20,
             UiTextSpanStyle {
                 highlight: true,
@@ -171,11 +177,78 @@ mod tests {
         assert_eq!(Some(super::HIGHLIGHT_BACKGROUND), pixel_at(&canvas, 40, 8));
     }
 
+    #[test]
+    fn span_background_keeps_fractional_line_tops_until_physical_rasterization() {
+        let palette = UiTreeCanvasPalette::from_theme(&ThemeSnapshot::dark());
+        let metrics = metrics_for_test();
+        let mut canvas = Canvas::new_scaled(80, 80, 2.0, palette.background);
+
+        draw_span_background(
+            &mut canvas,
+            10,
+            31.5,
+            20,
+            UiTextSpanStyle {
+                highlight: true,
+                ..UiTextSpanStyle::default()
+            },
+            palette,
+            metrics,
+        );
+
+        assert_eq!(Some(palette.background), pixel_at(&canvas, 20, 62));
+        assert_eq!(Some(super::HIGHLIGHT_BACKGROUND), pixel_at(&canvas, 20, 63));
+    }
+
+    #[test]
+    fn document_highlight_backgrounds_preserve_fractional_height_between_lines() {
+        let palette = UiTreeCanvasPalette::from_theme(&ThemeSnapshot::dark());
+        let mut metrics = metrics_for_test();
+        metrics.line_height = 32;
+        metrics.line_box_height = 31.5;
+        metrics.baseline_from_line_box_top = Some(12.0);
+        metrics.highlight_height = 32;
+        let mut canvas = Canvas::new_scaled(80, 64, 2.0, palette.background);
+
+        draw_span_background(
+            &mut canvas,
+            10,
+            0.0,
+            20,
+            UiTextSpanStyle {
+                highlight: true,
+                ..UiTextSpanStyle::default()
+            },
+            palette,
+            metrics,
+        );
+        draw_span_background(
+            &mut canvas,
+            10,
+            31.5,
+            20,
+            UiTextSpanStyle {
+                current_highlight: true,
+                ..UiTextSpanStyle::default()
+            },
+            palette,
+            metrics,
+        );
+
+        assert_eq!(Some(super::HIGHLIGHT_BACKGROUND), pixel_at(&canvas, 20, 62));
+        assert_eq!(
+            Some(super::CURRENT_HIGHLIGHT_BACKGROUND),
+            pixel_at(&canvas, 20, 63)
+        );
+    }
+
     fn metrics_for_test() -> UiTreeTextMetrics {
         UiTreeTextMetrics {
             font_size: 14.0,
             line_height: 23,
+            line_box_height: 23.0,
             top_margin: 0,
+            baseline_from_line_box_top: None,
             background_height: 23,
             highlight_height: 23,
             underline_offset: 17,

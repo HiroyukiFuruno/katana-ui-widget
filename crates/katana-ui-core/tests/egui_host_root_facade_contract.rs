@@ -470,11 +470,11 @@ fn opaque_tokens_and_transport_have_no_clone_or_serialize_derives() {
 
 #[test]
 fn public_facade_signatures_reject_child_and_presentation_concrete_types() {
-    let root_source = include_str!("../src/egui/text_command_surface/host_root.rs");
+    let factory_source = include_str!("../src/egui/text_command_surface/host_root/factory_api.rs");
     let facade_source = include_str!("../src/egui/text_command_surface/host_root_facade.rs");
     let types_source = include_str!("../src/egui/text_command_surface/host_root/types.rs");
     let public_sections = [
-        root_source
+        factory_source
             .split_once("impl EguiTextCommandSurfaceRootFactory")
             .and_then(|(_, value)| {
                 value.split_once("impl Default for EguiTextCommandSurfaceRootFactory")
@@ -522,7 +522,7 @@ fn public_facade_signatures_reject_child_and_presentation_concrete_types() {
             );
         }
     }
-    assert!(!root_source.contains("pub fn with_text_raster_config"));
+    assert!(!factory_source.contains("pub fn with_text_raster_config"));
     assert!(!facade_source.contains("pub fn with_text_raster_config"));
 }
 
